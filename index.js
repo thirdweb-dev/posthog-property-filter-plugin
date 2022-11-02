@@ -2,19 +2,29 @@ async function setupPlugin({ config, global }) {
     global.propertiesToFilter = config.properties.split(',')
 }
 
-function recursiveFilterObject(properties, propertyToFilter) {
-    const propertyToFilterCopy = [...propertyToFilter]
-    const currentPropertyToFilter = propertyToFilterCopy.shift()
-    let parsedProperties = {}
+function deletePropertyRecursively(properties, propertyToFilter) {
+    const result = { ...properties }
 
-    if (propertyToFilterCopy.length && properties[currentPropertyToFilter]) {
-        parsedProperties = recursiveFilterObject(properties[currentPropertyToFilter], propertyToFilterCopy)
-    } else if (currentPropertyToFilter in properties) {
-        parsedProperties = { ...properties }
-        delete parsedProperties[currentPropertyToFilter]
+    function recurse(obj, path = '') {
+        if (typeof obj === 'object') {
+            for (const [key, value] of Object.entries(obj)) {
+                const pathKey = path ? `${path}.${key}` : key
+                if (pathKey === propertyToFilter) {
+                    delete obj[key]
+                } else {
+                    if (!recurse(value, pathKey)) {
+                        delete obj[key]
+                    }
+                }
+            }
+        } else if (path === propertyToFilter) {
+            // should not hit this case
+            return null
+        }
+        return obj
     }
 
-    return propertyToFilterCopy.length ? { [currentPropertyToFilter]: parsedProperties } : parsedProperties
+    recurse(result, '')
 }
 
 async function processEvent(event, { global, storage }) {
@@ -26,11 +36,9 @@ async function processEvent(event, { global, storage }) {
         }
 
         if (propertyToFilter.includes('.')) {
-            propertiesCopy = {
-                ...propertiesCopy,
-                ...recursiveFilterObject(propertiesCopy, propertyToFilter.split('.')),
-            }
-        } else if (propertyToFilter in propertiesCopy) {
+            deletePropertyRecursively(propertiesCopy, propertyToFilter)
+        }
+        if (propertyToFilter in propertiesCopy) {
             delete propertiesCopy[propertyToFilter]
         }
     })
