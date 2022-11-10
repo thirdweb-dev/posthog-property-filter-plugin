@@ -6,6 +6,11 @@ function deletePropertyRecursively(properties, propertyToFilter) {
     const result = { ...properties }
 
     function recurse(obj, path = '') {
+        // to include = return true, to remove = return false
+        if (obj === null || obj === undefined) {
+            return true
+        }
+
         if (typeof obj === 'object') {
             for (const [key, value] of Object.entries(obj)) {
                 const pathKey = path ? `${path}.${key}` : key
@@ -18,10 +23,10 @@ function deletePropertyRecursively(properties, propertyToFilter) {
                 }
             }
         } else if (path === propertyToFilter) {
-            // should not hit this case
-            return null
+            return false
         }
-        return obj
+
+        return true
     }
 
     recurse(result, '')
@@ -38,6 +43,7 @@ async function processEvent(event, { global, storage }) {
         if (propertyToFilter.includes('.')) {
             deletePropertyRecursively(propertiesCopy, propertyToFilter)
         }
+
         if (propertyToFilter in propertiesCopy) {
             delete propertiesCopy[propertyToFilter]
         }
